@@ -1,0 +1,35 @@
+Feature Engineering Documentation
+============================================================
+
+FEATURES USED FOR TRAINING:
+1. flood_probability
+2. landslide_stress
+3. composite_risk
+4. rain_annual_mm
+5. rain_monsoon_mm
+6. rain_variability_cv
+7. flood_x_landslide
+8. flood_plus_landslide
+9. max_hazard
+10. hazard_disagreement
+11. flood_x_rain_annual
+12. landslide_x_rain_monsoon
+13. rain_intensity_ratio
+14. flood_probability_log
+15. landslide_stress_log
+
+
+FEATURE ENGINEERING CONDITIONS:
+- Base physics outputs: flood_probability, landslide_stress, composite_risk
+- Interactions: flood_x_landslide, flood_plus_landslide, max_hazard, hazard_disagreement
+- Encoded: region_encoded, disaster_type_encoded
+- Temporal: year_norm
+- Log-transform: flood_probability_log, landslide_stress_log
+
+
+TRAINING CONDITIONS:
+- Positive samples: Grid cells with historical flood/landslide events
+- Negative samples: Random cells without events (10:1 ratio)
+- Model: XGBoost with class weight balancing
+- Cross-validation: 5-fold stratified
+- Calibration: Isotonic regression for probability estimates

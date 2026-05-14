@@ -1,0 +1,16 @@
+feature,importance
+flood_probability_log,0.2637887
+rain_annual_mm,0.18984891
+hazard_disagreement,0.079088606
+rain_monsoon_mm,0.057692748
+flood_probability,0.05462918
+rain_variability_cv,0.051044293
+landslide_stress,0.050084252
+rain_intensity_ratio,0.04705867
+composite_risk,0.042315897
+flood_x_landslide,0.040785357
+landslide_x_rain_monsoon,0.03125224
+flood_plus_landslide,0.031044189
+flood_x_rain_annual,0.029035408
+landslide_stress_log,0.021338059
+max_hazard,0.010993548

@@ -1,0 +1,134 @@
+DIGITAL TWIN: TECHNICAL SPECIFICATION & DEEP DIVE CALCULATIONS
+================================================================================
+
+This document provides the exact mathematical formulas, scientific concepts, and 
+logic used in the Digital Twin project for the final review.
+
+--------------------------------------------------------------------------------
+1. TERRAIN & SPATIAL MODELING
+--------------------------------------------------------------------------------
+
+A. COORDINATE REPROJECTION
+- Data Source: Digital Elevation Model (DEM) in WGS84 (Lat/Lon).
+- Calculation: Re-projected to UTM (Universal Transverse Mercator).
+- Why: Logic for slope and water flow accumulation must be done in METERS, not 
+  degrees, to ensure distance accuracy (1 degree at the equator is 111km, but 
+  it shrinks as you go north).
+
+B. SLOPE CALCULATION (Central Difference Method)
+Formula:
+1. dz/dx = [Z(x+1, y) - Z(x-1, y)] / (2 * x_resolution)
+2. dz/dy = [Z(x, y+1) - Z(x, y-1)] / (2 * y_resolution)
+3. Slope (radians) = sqrt((dz/dx)^2 + (dz/dy)^2)
+4. Slope (degrees) = arctan(Slope) * (180 / PI)
+
+C. DOWNHILL GRAPH (G)
+Concept: A Directed Acyclic Graph (DAG) where nodes represent grid cells.
+Logic: 
+- For every cell 'i', find 8 neighbors 'j'.
+- If Elevation(i) > Elevation(j), create a directed edge i -> j.
+- This creates the "Upstream Map" used for flooding logic.
+
+--------------------------------------------------------------------------------
+2. THE HYDROLOGY SIMULATION (STATE EVOLUTION)
+--------------------------------------------------------------------------------
+
+The simulation runs in time-steps (Days). For each step 't':
+
+A. SOIL MEMORY (Saturation potential)
+Formula: Memory(t) = (decay * Memory(t-1)) + Rainfall(t)
+- Decay: 0.6 to 0.85 (representing drainage and evaporation).
+- Purpose: Represents how much water the soil has already absorbed before 
+  flooding starts.
+
+B. FLOOD INDEX (Inundation model)
+Formula: Flood(t) = (0.4 * Flood(t-1)) + [0.4 * Memory * (1 / (1 + Slope))] + (0.2 * UpstreamMean)
+- (1 / (1 + Slope)): Ensures that flat areas (low slope) accumulate water, while 
+  steep areas let it run off.
+- UpstreamMean: The average of the Previous Flood Index of all cells that flow 
+  INTO the current cell. This models river/stream accumulation.
+
+C. SOIL SATURATION
+Formula: Saturation = 0.6 * Memory + 0.4 * Flood
+- Logic: Saturation is a mix of ground absorption (Memory) and surface 
+  accumulated water (Flood).
+
+--------------------------------------------------------------------------------
+3. LANDSLIDE PHYSICS
+--------------------------------------------------------------------------------
+
+A. LANDSLIDE STRESS
+Formula: Stress = [Saturation * (Slope / (CriticalSlope + 1e-6))] / Resistance
+- CriticalSlope: Set to 5 degrees. If slope is higher, stress increases linearly.
+- Resistance: A material constant representing soil cohesion.
+- Concept: The "infinite slope stability" model simplified. Water (Saturation) 
+  increases pore pressure, reducing friction, while Gravity (Slope) increases 
+  downward pull.
+
+B. COMPOSITE RISK (Physics-Base)
+Formula: Risk = 0.6 * Normalize(Flood) + 0.4 * Normalize(LandslideStress)
+- Normalization: (X - min) / (max - min) to ensure all scores are 0.0 to 1.0.
+
+--------------------------------------------------------------------------------
+4. ADAPTIVE GRID REFINEMENT
+--------------------------------------------------------------------------------
+
+Logic:
+1. Identify cells where Probability > 0.5 (High Risk).
+2. Split the cell (Quadtree split): Factor of 2 (1 cell becomes 4).
+3. Distribute State Variables:
+   - Geometry: Divided into 4 equal bounding boxes.
+   - Values: Memory/Flood/Stress values are distributed: New_Value = Old_Value / 4. 
+     This ensures "Conservation of Mass" (water volume stays the same).
+4. Re-calculate Terrain: Re-query the DEM for the new smaller cell centroids.
+
+--------------------------------------------------------------------------------
+5. MACHINE LEARNING (XGBOOST LAYER)
+--------------------------------------------------------------------------------
+
+A. FEATURE ENGINEERING (The Brain)
+The model uses "Interaction Features" to find complex relationships:
+- flood_x_landslide: Identifies synergistic risk where both hazards overlap.
+- max_hazard: Focuses on the single highest threat.
+- hazard_disagreement: |Flood - Landslide|. High values signal that the physics 
+  model is uncertain, triggering the ML to step in.
+- flood_probability_log: log(1 + prob). Used because hazards follow a 
+  power-law distribution, not a linear one.
+
+B. XGBOOST CALIBRATION
+- Objective: binary:logistic (Output is a probability 0-1).
+- scale_pos_weight: 10. This handles "Class Imbalance" because historical 
+  disasters are rare (positive cases) compared to normal days (negative cases).
+- Calibration: Isotonic Regression is used to ensure that if the model predicts 
+  70% risk, an event actually happens in 70% of those cases historically.
+
+--------------------------------------------------------------------------------
+6. HYBRID RISK BLENDING
+--------------------------------------------------------------------------------
+
+Formula (Historical Mode):
+Final_Score = (0.3 * Physics_Risk) + (0.7 * ML_Risk_Score)
+
+- Logic: We trust the ML more (70%) because it "knows" what actually happened 
+  in the past, but we keep the Physics (30%) to ensure the result respects the 
+  laws of gravity and terrain.
+
+--------------------------------------------------------------------------------
+7. PERFORMANCE OPTIMIZATIONS
+--------------------------------------------------------------------------------
+
+A. GEOJSON COMPACTION
+- Coordinate Truncation: Coordinates are rounded to 3 decimal places (~111m). 
+  Storing 15 decimals is a waste for visualization.
+- Precision Logic: Float values (like risk scores) are rounded to 4 decimals.
+- Impact: Reduces file size from ~600MB to ~1MB for web rendering.
+
+B. FAST-PATH DYNAMIC TRIGGER (Dynamic Mode)
+- Logic: Instead of 20-minute math, we use:
+  Activation_Threshold = 0.7 - 0.6 * (Current_Rain / 500)
+- Result: As rain increases, the "gate" for high-risk cells opens wider, 
+  allowing cells to turn RED based on their calculated probability instantly.
+
+--------------------------------------------------------------------------------
+END OF TECHNICAL SPECIFICATION
+--------------------------------------------------------------------------------

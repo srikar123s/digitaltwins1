@@ -1,0 +1,21 @@
+# Virtual environment
+.venv/
+venv/
+
+# Large DEM/data files
+*.tif
+*.tiff
+*.npy
+
+# Output/generated files
+output/
+outputs/
+results/
+generated/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Optional: ignore whole data folder
+data/

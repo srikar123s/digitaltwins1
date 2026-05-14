@@ -1,0 +1,45 @@
+:root {
+  --bg-color: #0d1117;
+  --text-color: #c9d1d9;
+  --panel-bg: rgba(22, 27, 34, 0.7);
+  --panel-border: rgba(255, 255, 255, 0.1);
+  --highlight: #58a6ff;
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--text-color);
+  background-color: var(--bg-color);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Hide scrollbars for full-screen map */
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+  background: var(--panel-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+  padding: 1rem;
+  color: #fff;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-color); 
+}
+::-webkit-scrollbar-thumb {
+  background: #30363d; 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8b949e; 
+}
