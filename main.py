@@ -210,7 +210,6 @@ def adaptive_refinement(grid, probability, state, max_depth=2):
         return grid, state
 
     grid, state = refine_cells(grid, state, cells)
-
     print("New grid size:", len(grid))
 
     return grid, state
